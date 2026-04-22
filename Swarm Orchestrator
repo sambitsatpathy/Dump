@@ -1,86 +1,101 @@
-# Copilot Swarm Orchestrator – Complete Planning & Specification Document
+# Copilot Swarm Orchestrator – Planning & Specification Document
 
-> **Important Note**: This document is designed for users who **do not have access to the GitHub Copilot CLI mode** and wish to run the orchestration entirely within **VS Code Copilot Chat**. All guidance is tailored toward building a chat-based, multi‑agent coordination system using manual prompting, workspace context, and git branch isolation.
+> **Scope of This Document**: This is a planning and specification document for a verification-first, multi-agent coordination methodology built on top of **VS Code GitHub Copilot Chat** (including Agent Mode). It describes the system design, agent profiles, orchestration workflow, and quality standards. It does **not** cover implementation code.
+
+> **Platform Note**: As of 2025, GitHub Copilot **Agent Mode** is available in VS Code Stable for all users, and the Copilot CLI exists as a separate background execution environment. This specification targets the **VS Code Chat + Agent Mode** surface, which is the most accessible and interactive starting point. Where the Copilot CLI offers relevant enhancements (e.g. Git worktree isolation), these are noted as optional upgrades, not requirements.
 
 ---
 
 ## Table of Contents
 
-1. [Introduction & Purpose](#introduction--purpose)
-2. [Core Architectural Principles](#core-architectural-principles)
-3. [System Architecture Overview](#system-architecture-overview)
-4. [Agent Catalog – Complete Profiles](#agent-catalog--complete-profiles)
-   - 4.1. Step‑Executing Agents
-   - 4.2. Control & Governance Agents
-   - 4.3. The Repair Agent
-5. [Detailed Orchestration Workflow](#detailed-orchestration-workflow)
-   - 5.1. Goal Definition & Plan Generation
-   - 5.2. Greedy Scheduling & Parallel Execution
-   - 5.3. Git Branch Isolation Strategy
-   - 5.4. Evidence‑Based Verification
-   - 5.5. Critic Review (Governance Mode)
-   - 5.6. Self‑Repair Loop
-   - 5.7. Merging & Post‑Merge Quality Gates
-6. [The Eight Post‑Merge Quality Gates](#the-eight-post-merge-quality-gates)
-7. [Cost Management & Estimation](#cost-management--estimation)
-8. [Configuration & Customization Files](#configuration--customization-files)
-9. [Implementation for VS Code Copilot Chat (No CLI)](#implementation-for-vs-code-copilot-chat-no-cli)
-   - 9.1. Challenges & Workarounds
-   - 9.2. Manual Agent Invocation Pattern
-   - 9.3. Simulating Isolation & Verification
-   - 9.4. Using Skills to Enhance Agents
-   - 9.5. Practical Chat Workflow Example
-10. [CLI Command Reference (Informational)](#cli-command-reference-informational)
-11. [Limitations & Caveats](#limitations--caveats)
-12. [Appendix: Example Agent Prompt Template](#appendix-example-agent-prompt-template)
+1. [Introduction & Purpose](#1-introduction--purpose)
+2. [Core Architectural Principles](#2-core-architectural-principles)
+3. [System Architecture Overview](#3-system-architecture-overview)
+4. [Agent Catalog – Complete Profiles](#4-agent-catalog--complete-profiles)
+   - 4.1 Step-Executing Agents
+   - 4.2 Control & Governance Agents
+   - 4.3 The Repair Agent
+5. [Detailed Orchestration Workflow](#5-detailed-orchestration-workflow)
+   - 5.1 Goal Definition & Plan Generation
+   - 5.2 Greedy Scheduling & Parallel Execution
+   - 5.3 Git Branch Isolation Strategy
+   - 5.4 Evidence-Based Verification
+   - 5.5 Critic Review (Governance Mode)
+   - 5.6 Self-Repair Loop
+   - 5.7 Merging & Post-Merge Quality Gates
+6. [The Eight Post-Merge Quality Gates](#6-the-eight-post-merge-quality-gates)
+7. [Cost & Quota Management](#7-cost--quota-management)
+8. [Configuration & Customization Files](#8-configuration--customization-files)
+9. [VS Code Chat Execution Model](#9-vs-code-chat-execution-model)
+   - 9.1 Chat Mode vs. Agent Mode – Choosing the Right Surface
+   - 9.2 Structured Agent Invocation Pattern
+   - 9.3 Branch Isolation & Evidence Collection
+   - 9.4 Custom Instructions & Prompt Files
+   - 9.5 Practical Session Walkthrough
+10. [Limitations & Honest Caveats](#10-limitations--honest-caveats)
+11. [Appendix A – Agent Prompt Template](#appendix-a--agent-prompt-template)
+12. [Appendix B – Session Tracking Template](#appendix-b--session-tracking-template)
 
 ---
 
-## Introduction & Purpose
+## 1. Introduction & Purpose
 
-The **Copilot Swarm Orchestrator** (rebranded as **Swarm Orchestrator**) is a verification‑first multi‑agent system. It transforms GitHub Copilot from a single‑task assistant into a **parallel, auditable, and self‑repairing team of specialists**.  
+The **Copilot Swarm Orchestrator** is a verification-first, multi-agent coordination methodology. It transforms VS Code GitHub Copilot from a single-task assistant into a **parallel, auditable, and self-repairing team of specialists** — operated through disciplined human-in-the-loop orchestration.
 
-Every line of code generated is **proven** against concrete evidence before it ever touches the main branch. The orchestrator does not blindly trust the AI – it demands **commit SHAs, test output, and file diffs** as verifiable artifacts.
+Every piece of work generated by an agent is **verified against concrete evidence** before it is merged to the main branch. The orchestrator does not blindly trust the AI. It demands **commit SHAs, test output, and file diffs** as verifiable artifacts of completion.
 
-This document provides a **complete technical specification** of the orchestrator. Because the original tool relies on the Copilot CLI (`copilot -p`), this guide also includes a dedicated section on **adapting the system to run purely within VS Code Copilot Chat**.
+### What This Is
+
+A **structured methodology** — a set of roles, workflows, prompt templates, and verification checklists — applied consistently across a VS Code Copilot Chat session or series of sessions.
+
+### What This Is Not
+
+- An automated tool or CLI
+- A VS Code extension
+- A plugin or package you install
+
+The value is in the **discipline**, not the automation. A developer applying this methodology consistently will produce more auditable, higher-quality AI-assisted code than one using Copilot ad hoc.
 
 ---
 
-## Core Architectural Principles
+## 2. Core Architectural Principles
 
 | Principle | Description |
 | :--- | :--- |
-| **Isolation by Branch** | Every agent works in its own git branch (`swarm/<session-id>/step-N-agent`). Parallel work never collides. |
-| **Evidence‑Based Verification** | Agents must **prove** their work. Claims are cross‑checked against commit logs, test results, and file changes. |
-| **Self‑Repair with Limits** | Failed steps are re‑attempted up to 3 times with targeted fix strategies. Verification rules are **never weakened**. |
-| **Deterministic Quality Gates** | After merge, eight automated checks (regex, AST, thresholds) validate the final code – **no LLM involved**. |
-| **Cost‑Aware Scheduling** | Pre‑execution estimates and hard budgets prevent runaway token usage. |
+| **Isolation by Branch** | Every agent works in its own git branch (`swarm/<session-id>/step-N-<agent>`). Parallel work never collides, and failures are contained. |
+| **Evidence-Based Verification** | Agents must **prove** their work. Claims are cross-checked against `git log`, test output, and `git diff --stat`. No completion is accepted on the AI's word alone. |
+| **Human-in-the-Loop Repair** | Failed steps are diagnosed, re-prompted, and re-verified up to 3 times. Verification criteria are **never relaxed** between attempts. |
+| **Deterministic Quality Gates** | After merge, eight automated checks use regex, AST analysis, and static thresholds to validate the final codebase. No AI is used here, ensuring reproducibility. |
+| **Quota-Aware Scheduling** | Agent mode consumes premium requests. Plan sessions with a step budget and prefer Chat (Ask/Edit) mode for well-scoped tasks to conserve quota. |
 
 ---
 
-## System Architecture Overview
+## 3. System Architecture Overview
 
-The orchestrator is written in TypeScript and consists of several loosely‑coupled modules. While you will not run the TypeScript code directly in a chat environment, understanding the module responsibilities is essential for implementing the same logic manually.
+The orchestrator is a **conceptual architecture** composed of roles and processes. Understanding each component is essential for applying the methodology correctly.
 
-| Module | Responsibility |
+| Component | Responsibility |
 | :--- | :--- |
-| **Core Orchestrator** | Greedy scheduler, dependency resolution, octopus merge, governance. |
-| **Plan Generator** | Breaks high‑level goals into numbered steps with assigned agents and dependencies. |
-| **Session Executor** | Manages Copilot CLI subprocesses (replaced by chat prompts in our adaptation). |
-| **Verification Engine** | Parses transcripts and git history to confirm that promises were kept. |
-| **Repair Agent** | Classifies failures and applies corrective strategies. |
-| **Quality Gates** | Eight post‑merge checks that run on the final codebase. |
-| **Cost Estimator** | Predicts premium request usage based on plan and historical failure rates. |
+| **Plan Generator** | Breaks high-level goals into numbered steps, assigns agent roles, and declares inter-step dependencies. Produced via a structured prompt to Copilot or written manually. |
+| **PM Agent** | Reviews the plan before execution to catch missing dependencies, circular logic, and undefined done-definitions. Human-invoked. |
+| **Step-Executing Agents** | Specialist personas (FrontendExpert, BackendMaster, etc.) invoked one at a time via structured prompts. Each operates in an isolated git branch. |
+| **Verification Layer** | A manual checklist applied after each agent turn: git log confirms a commit exists, test output is checked, file diffs are reviewed. |
+| **Critic Agent** | Scores completed work on a 100-point rubric. Flags low-scoring steps for human review before merge. |
+| **Repair Agent** | A structured re-prompt strategy applied when a step fails verification. Triggered manually; limited to 3 attempts per step. |
+| **Quality Gates** | Eight deterministic post-merge checks run as scripts on the final codebase. |
+| **Session Log** | A `SESSIONS.md` file maintained by the developer tracking step status, commit SHAs, and transcript locations. |
 
 ---
 
-## Agent Catalog – Complete Profiles
+## 4. Agent Catalog – Complete Profiles
 
-Agents are the heart of the swarm. Each is defined by a strict **purpose**, **scope**, **boundaries**, and **done definition**.
+Agents are specialist personas defined by strict **purpose, scope, boundaries, and done-definitions**. These definitions are stored as prompt files (`.prompt.md`) or in `.github/copilot-instructions.md` for persistence across sessions. See Section 8 for file structure.
 
-### 4.1. Step‑Executing Agents
+Each agent is **invoked manually** via a structured prompt (see Appendix A). The developer switches git branches, issues the prompt, verifies the output, and records the evidence before proceeding.
 
-These agents perform the actual work of coding, testing, and configuration. Their definitions are stored in `config/default-agents.yaml`.
+---
+
+### 4.1 Step-Executing Agents
 
 #### FrontendExpert
 
@@ -88,333 +103,622 @@ These agents perform the actual work of coding, testing, and configuration. Thei
 | :--- | :--- |
 | **Purpose** | Implement UI components, styles, and frontend logic for React/Vue/Svelte applications. |
 | **Scope** | Components, hooks, state management, API integration (fetch/axios), styling, accessibility basics. |
-| **Boundaries** | **Cannot** modify backend logic, database schemas, or deployment configs. **Cannot** use local‑only mock state if a real backend exists. |
-| **Done Definition** | 1. All UI components render correctly. 2. API calls are wired to the correct backend endpoints. 3. No TypeScript/ESLint errors. 4. Basic responsive design verified. |
-| **Output Contract** | Modified frontend files, a commit with a descriptive message, and a `/share` transcript. |
-| **Refusal Rules** | If backend API field names are ambiguous, **stop and ask** for clarification. Do not guess. |
+| **Boundaries** | Must not modify backend logic, database schemas, or deployment configuration. Must not use local mock state when a real backend endpoint exists. |
+| **Done Definition** | 1. All UI components render without errors. 2. API calls target the correct backend endpoints (field names confirmed with BackendMaster output). 3. No TypeScript or ESLint errors. 4. Basic responsive behaviour verified. |
+| **Output Contract** | Modified frontend files + a committed change with a descriptive message + a list of changed files. |
+| **Refusal Rule** | If backend API field names are ambiguous or undocumented, stop and surface the ambiguity. Do not guess. |
+
+---
 
 #### BackendMaster
 
 | Attribute | Value |
 | :--- | :--- |
-| **Purpose** | Implement server‑side logic, REST/GraphQL APIs, and data processing (Node.js, Python, Go). |
+| **Purpose** | Implement server-side logic, REST or GraphQL APIs, and data processing in Node.js, Python, or Go. |
 | **Scope** | API route handlers, database queries, business logic, input validation, error handling. |
-| **Boundaries** | **Cannot** modify frontend code or UI components. **Cannot** change infrastructure (Docker/CI) without involving DevOpsPro. |
-| **Done Definition** | 1. All API endpoints return expected responses. 2. Input validation prevents invalid data. 3. API field names are documented for frontend consumption. 4. Unit tests pass. |
-| **Output Contract** | Modified backend files, API documentation snippet, commit SHA, test results. |
+| **Boundaries** | Must not modify frontend code or UI components. Must not change infrastructure (Docker, CI/CD) without coordinating with DevOpsPro. |
+| **Done Definition** | 1. All API endpoints return the expected status codes and response shapes. 2. Input validation rejects invalid data with appropriate error responses. 3. API field names are documented in a comment block or short API reference for frontend consumption. 4. Unit tests pass. |
+| **Output Contract** | Modified backend files + API field name documentation + commit with descriptive message + test output. |
+
+---
 
 #### DevOpsPro
 
 | Attribute | Value |
 | :--- | :--- |
 | **Purpose** | Configure CI/CD pipelines, Docker containers, and deployment manifests. |
-| **Scope** | GitHub Actions workflows, Dockerfiles, docker‑compose, environment variables, build scripts. |
-| **Boundaries** | **Cannot** change application logic or feature code. |
-| **Done Definition** | 1. CI pipeline runs successfully. 2. Docker image builds without errors. 3. Deployment (or local compose) starts correctly. |
-| **Output Contract** | Updated workflow files, Dockerfile, build logs. |
+| **Scope** | GitHub Actions workflows, Dockerfiles, docker-compose files, environment variables, build scripts. |
+| **Boundaries** | Must not change application logic or feature code. |
+| **Done Definition** | 1. CI pipeline completes without errors. 2. Docker image builds successfully. 3. Application starts correctly under the configured compose or deployment setup. |
+| **Output Contract** | Updated workflow files and/or Dockerfile + build log confirmation + commit with descriptive message. |
+
+---
 
 #### SecurityAuditor
 
 | Attribute | Value |
 | :--- | :--- |
-| **Purpose** | Identify and fix security vulnerabilities in the codebase. |
-| **Scope** | Authentication flaws, injection vulnerabilities, hardcoded secrets, insecure dependencies, input sanitization. |
-| **Boundaries** | **Cannot** implement new features. **Cannot** refactor code unless it directly addresses a security issue. |
-| **Done Definition** | 1. All identified vulnerabilities are remediated or documented with a justification. 2. No new secrets are introduced. 3. Security‑related tests pass. |
-| **Output Contract** | Security audit report (in transcript), list of fixed issues, commit SHAs. |
+| **Purpose** | Identify and remediate security vulnerabilities in the codebase. |
+| **Scope** | Authentication flaws, injection vulnerabilities, hardcoded secrets, insecure dependencies, missing input sanitisation. |
+| **Boundaries** | Must not implement new features. Must not refactor code beyond what is directly required by a security fix. |
+| **Done Definition** | 1. All identified vulnerabilities are remediated or explicitly documented with a risk justification. 2. No new secrets or hardcoded credentials are introduced. 3. Security-related tests pass. |
+| **Output Contract** | Security findings summary (stored as `transcripts/step-N-security.md`) + list of fixed issues with file and line references + commit with descriptive message. |
+
+---
 
 #### TesterElite
 
 | Attribute | Value |
 | :--- | :--- |
-| **Purpose** | Write and execute tests (unit, integration, end‑to‑end) and verify coverage. |
-| **Scope** | Test files, test runners (Jest, Pytest, etc.), coverage configuration, mocking strategies. |
-| **Boundaries** | **Cannot** modify application logic to make a failing test pass – report the bug instead. Frontend tests **must** call the real backend API (no local mocking of entire responses). |
-| **Done Definition** | 1. All tests pass. 2. Coverage meets or exceeds threshold. 3. Tests are isolated (no shared state). |
-| **Output Contract** | Test files, coverage report, test execution transcript. |
+| **Purpose** | Write and execute tests (unit, integration, end-to-end) and verify coverage thresholds are met. |
+| **Scope** | Test files, test runner configuration (Jest, Pytest, Vitest, etc.), coverage tooling, mocking strategies. |
+| **Boundaries** | Must not modify application logic to force a failing test to pass — report the bug instead. Frontend tests must call the real backend API; mocking entire response shapes is not permitted. |
+| **Done Definition** | 1. All tests pass with a zero exit code. 2. Coverage meets or exceeds the configured threshold (default: 80%). 3. Tests are isolated — no shared mutable state between test cases. |
+| **Output Contract** | New or updated test files + coverage report output (pasted or saved to `transcripts/`) + commit with descriptive message. |
+
+---
 
 #### IntegratorFinalizer
 
 | Attribute | Value |
 | :--- | :--- |
-| **Purpose** | Integrate all components, run end‑to‑end tests, finalize documentation, and ensure a cohesive deliverable. |
-| **Scope** | Cross‑component integration, README updates, final smoke tests, dependency alignment. |
-| **Boundaries** | **Cannot** introduce major new features. |
-| **Done Definition** | 1. End‑to‑end tests pass. 2. README accurately reflects the final product. 3. No critical integration bugs remain. |
-| **Output Contract** | Final commit(s), updated README, E2E test results. |
+| **Purpose** | Integrate all components, run end-to-end smoke tests, finalise documentation, and confirm the deliverable is cohesive. |
+| **Scope** | Cross-component wiring, README updates, final E2E smoke tests, dependency version alignment. |
+| **Boundaries** | Must not introduce major new features. Scope is integration and documentation only. |
+| **Done Definition** | 1. End-to-end tests pass. 2. README accurately describes the final product's setup and features. 3. No critical integration bugs remain unresolved. |
+| **Output Contract** | Final commit(s) + updated README + E2E test output. |
 
-### 4.2. Control & Governance Agents
+---
 
-These agents do not write code directly. They supervise, critique, and repair.
+### 4.2 Control & Governance Agents
+
+These agents do not write feature code. They plan, evaluate, and redirect.
 
 #### PMAgent (Project Manager)
 
 | Attribute | Value |
 | :--- | :--- |
-| **Purpose** | Review the execution plan **before** work begins to catch logical flaws and missing dependencies. |
-| **Activation** | `--pm` flag (or manually invoked in chat). |
-| **Checks Performed** | 1. Are all steps assigned to a valid agent? 2. Are there circular dependencies? 3. Does each step have a clear `done_definition`? |
-| **Output** | A validated plan or a rejection with specific revision requests. |
+| **Purpose** | Review the execution plan before work begins to surface logical flaws and missing dependencies. |
+| **When to Invoke** | Before the first step-executing agent is called. Optionally again after any major plan revision. |
+| **Checks Performed** | 1. Is every step assigned to a valid agent? 2. Are there circular dependencies? 3. Does each step have a concrete, testable done-definition? 4. Are there steps that can safely run in parallel? |
+| **Output** | A validated plan — or a rejection with specific, actionable revision requests. |
+
+---
 
 #### Critic Agent
 
 | Attribute | Value |
 | :--- | :--- |
-| **Purpose** | Score completed work against a weighted rubric and recommend approval/rejection. |
-| **Activation** | `--governance` mode (or manual review step). |
-| **Scoring Rubric** | **Total: 100 points**. Deductions: Build failure: -25, Test failure: -20, Missing commit: -10, Lint error: -5, Unverified claim: -5. |
-| **Action** | Auto‑pause on any red flag for human approval. |
+| **Purpose** | Score completed work against a weighted rubric and recommend approval or rejection before merge. |
+| **When to Invoke** | After each step passes the basic verification checklist, before merging to main. Always invoke in governance mode for steps touching security, auth, or data persistence. |
+| **Scoring Rubric** | Start at 100 points. Deduct: build failure −25, test failure −20, missing commit −10, lint error −5, unverified claim (agent stated something that evidence doesn't confirm) −5. |
+| **Threshold** | Steps scoring below 70 are flagged. Human approval is required before merge proceeds. |
+| **Output** | A numeric score, itemised deductions, and a clear approve/hold recommendation. |
 
-### 4.3. The Repair Agent
+---
+
+### 4.3 The Repair Agent
 
 | Attribute | Value |
 | :--- | :--- |
-| **Purpose** | Automatically fix a failed step without human intervention. |
-| **Invocation** | Triggered when a step fails verification or execution. |
-| **Failure Classification** | `build-error`, `test-failure`, `missing-artifact`, `lint-error`, `merge-conflict`. |
-| **Repair Strategies** | 1. **Build Error**: Fix syntax or missing imports. 2. **Test Failure**: Update test to match new behavior or fix bug in code. 3. **Missing Artifact**: Generate the required file. |
-| **Limits** | Maximum **3 repair attempts** per step. **Cannot** delete or weaken a verification check. |
-| **Commit Message Prefix** | All repair commits start with `repair:` to maintain audit trail. |
+| **Purpose** | Provide a structured re-prompt strategy to fix a failed step. Applied by the developer after a step fails verification or the Critic flags it. |
+| **Invocation** | Manual. The developer diagnoses the failure category, selects the matching repair strategy, and re-invokes the step-executing agent with a corrective prompt. |
+| **Failure Categories** | `build-error` · `test-failure` · `missing-artifact` · `lint-error` · `merge-conflict` |
+| **Repair Strategies** | **Build Error** — Surface the exact compiler output and instruct the agent to fix only the identified syntax or import issue. **Test Failure** — Provide the failing test name and output; instruct the agent to determine whether the bug is in the code or the test, and fix the appropriate side. **Missing Artifact** — Specify the exact file or output that is absent and instruct the agent to generate it. **Lint Error** — Paste the linter output and instruct the agent to resolve only the flagged violations. **Merge Conflict** — Provide the conflicting diff sections and instruct the agent to resolve using the correct source of truth for each hunk. |
+| **Attempt Limit** | Maximum **3 repair attempts** per step. If the step is still failing after 3 attempts, mark it `BLOCKED` and halt the session for human diagnosis. |
+| **Commit Prefix** | All repair commits must use the prefix `repair:` to maintain a clear audit trail (e.g. `repair: fix missing import in auth middleware`). |
+| **Hard Rule** | Verification criteria are **never weakened** between repair attempts. Do not accept lower coverage, skip a failing test, or reduce the done-definition to make a step pass. |
 
 ---
 
-## Detailed Orchestration Workflow
+## 5. Detailed Orchestration Workflow
 
-### 5.1. Goal Definition & Plan Generation
+### 5.1 Goal Definition & Plan Generation
 
-1. **User Input**: A high‑level goal, e.g., *"Add a dark mode toggle to the settings page."*
-2. **Plan Generator** (or manual prompt) breaks it down:
-[BackendMaster] Add user preference API endpoint for theme.
-[FrontendExpert] Create ThemeContext and toggle component.
-[TesterElite] Write tests for theme switching.
-[IntegratorFinalizer] Update README and run E2E smoke test.
-text
-3. **Dependencies** are declared (e.g., step 2 depends on step 1's API field names).
-4. **PM Agent** (optional) validates the plan.
+**Input**: A high-level goal stated in plain language.
+**Example**: *"Add a dark mode toggle to the settings page."*
 
-### 5.2. Greedy Scheduling & Parallel Execution
+**Process**:
 
-- A step is launched **the moment all its dependencies are resolved**.
-- Steps with no mutual dependencies run **in parallel** (e.g., FrontendExpert and TesterElite can work simultaneously after BackendMaster finishes).
+1. Invoke PMAgent (or write manually) with the goal and a prompt to decompose it into numbered steps.
+2. Each step must include: step number, assigned agent, task description, explicit dependencies, and a done-definition.
+3. PMAgent validates the plan (see Section 4.2).
 
-### 5.3. Git Branch Isolation Strategy
+**Example Output Plan**:
 
-For **every single step**, a dedicated branch is created:
-swarm/session-20250421/step-1-backendmaster
-swarm/session-20250421/step-2-frontendexpert
-swarm/session-20250421/step-3-testerelite
+```
+Step 1 — BackendMaster
+  Task: Add GET /api/user/preferences and PUT /api/user/preferences endpoints.
+        Response shape: { theme: "light" | "dark" }.
+  Depends on: nothing
+  Done: Endpoints return correct shapes, validation rejects invalid theme values, unit tests pass.
 
-text
-This ensures:
-- Parallel work never conflicts.
-- A failing step can be discarded without affecting others.
-- Evidence (commits, diffs) is cleanly attributable.
+Step 2 — FrontendExpert
+  Task: Create ThemeContext and a toggle component wired to Step 1's API.
+  Depends on: Step 1 (API field names must be confirmed before starting)
+  Done: Toggle renders, persists preference via API, no TypeScript errors.
 
-### 5.4. Evidence‑Based Verification
+Step 3 — TesterElite
+  Task: Write integration tests for theme switching end-to-end.
+  Depends on: Step 1 and Step 2
+  Done: Tests pass, coverage ≥ 80%.
 
-After an agent claims completion, the verifier **does not take its word for it**. It extracts evidence from:
-
-| Evidence Type | Source |
-| :--- | :--- |
-| **Commit SHA** | `git log -1 --oneline` |
-| **Test Results** | Parsed from `npm test` output or transcript. |
-| **File Changes** | `git diff --stat` |
-| **Lint Status** | Exit code of linter. |
-
-Any mismatch between the agent's claims and the evidence triggers a failure.
-
-### 5.5. Critic Review (Governance Mode)
-
-When `--governance` is enabled, the Critic agent:
-1. **Scores** each step on the 100‑point scale.
-2. **Flags** any step scoring below 70.
-3. **Auto‑pauses** the pipeline and requests human approval.
-
-### 5.6. Self‑Repair Loop
-
-If a step fails:
-1. The **Repair Agent** analyzes the failure logs.
-2. It applies a targeted fix and commits it.
-3. Verification runs again.
-4. This repeats up to 3 times; if still failing, the step is marked as `FAILED` and the session halts for manual intervention.
-
-### 5.7. Merging & Post‑Merge Quality Gates
-
-Once all steps pass verification:
-1. Branches are merged into `main` in dependency order.
-2. An **octopus merge** may be used to combine multiple parallel branches.
-3. After merge, the **eight quality gates** run on the final codebase.
+Step 4 — IntegratorFinalizer
+  Task: Update README, run E2E smoke test.
+  Depends on: Step 3
+  Done: README updated, E2E smoke test passes.
+```
 
 ---
 
-## The Eight Post‑Merge Quality Gates
+### 5.2 Greedy Scheduling & Parallel Execution
 
-These gates are **deterministic** – they use regex, AST analysis, and static thresholds. No LLM is used here, ensuring reproducibility.
+**Scheduling rule**: A step is ready to begin the moment all its declared dependencies have been verified and merged.
 
-| Gate | Check | Failure Condition |
+**Parallelism**: Steps with no mutual dependencies may be worked on simultaneously by opening a second VS Code window pointed at a separate git branch. This is intentionally manual — you control the level of parallelism based on your capacity to context-switch and verify.
+
+> **Realistic expectation**: Most developers will execute steps sequentially. Parallelism is an optimisation, not a requirement. The branch isolation strategy (Section 5.3) ensures that steps worked in parallel do not interfere with each other regardless.
+
+---
+
+### 5.3 Git Branch Isolation Strategy
+
+For **every step**, a dedicated branch is created from the current state of `main` (or from the dependency step's merged branch):
+
+```
+swarm/session-20250422/step-1-backendmaster
+swarm/session-20250422/step-2-frontendexpert
+swarm/session-20250422/step-3-testerelite
+swarm/session-20250422/step-4-integratorfinalizer
+```
+
+**Branch lifecycle**:
+
+1. `git checkout -b swarm/<session>/<step>-<agent>` before invoking the agent
+2. Agent makes changes and commits
+3. Evidence is collected (Section 5.4)
+4. Critic scores the step (Section 5.5)
+5. Branch is merged to `main` with `--no-ff` to preserve the branch history
+6. Branch is retained (not deleted) for audit purposes
+
+**Why `--no-ff`**: A fast-forward merge flattens the branch history, making it impossible to trace which agent produced which commits after the fact. `--no-ff` preserves attribution.
+
+> **Optional enhancement**: The Copilot CLI supports Git worktree isolation natively, allowing multiple branches to be checked out simultaneously in separate directories. This is a meaningful quality-of-life upgrade for parallel execution and removes the need to stash or switch branches between steps.
+
+---
+
+### 5.4 Evidence-Based Verification
+
+After an agent claims a step is complete, **do not proceed until all evidence is confirmed**. The following checklist must pass before the Critic is invoked:
+
+| Evidence Type | Command | Acceptance Criterion |
 | :--- | :--- | :--- |
-| **1. Scaffold Leftovers** | Scans for TODO placeholders, "Lorem ipsum", `FIXME`. | Any occurrence found. |
-| **2. Duplicate Blocks** | Detects repeated code blocks (>5 lines). | Duplication exceeds threshold. |
-| **3. Hardcoded Config** | Flags magic strings, hardcoded URLs, secrets. | Any hardcoded value in config‑sensitive locations. |
-| **4. README Drift** | Ensures setup commands and feature list match actual code. | Mismatch between README claims and code reality. |
-| **5. Test Isolation** | Checks for cross‑test dependencies (e.g., shared mutable state). | Tests influence each other's outcome. |
-| **6. Test Coverage** | Verifies coverage meets minimum (e.g., 80%). | Coverage below threshold. |
-| **7. Accessibility** | Basic a11y checks (alt text, ARIA labels). | Missing required attributes. |
-| **8. Runtime Correctness** | Checks for runtime errors during a short smoke test. | Process exits with non‑zero code. |
+| **Commit exists** | `git log -1 --oneline` | A descriptive commit message is present; it is not a generic placeholder. |
+| **Files changed** | `git diff main --stat` | The changed files match the step's declared scope. No files outside scope were modified. |
+| **Tests pass** | `npm test` / `pytest` / etc. | Zero test failures; exit code 0. |
+| **Lint clean** | `eslint .` / `ruff check .` / etc. | Zero lint errors (warnings may be tolerated per project policy). |
+| **Coverage met** | Coverage report output | Coverage is at or above the configured threshold. |
+
+Any failed check triggers the Repair Agent workflow (Section 5.6) rather than proceeding.
+
+**Evidence storage**: Copy the relevant output (git log, test results) into `transcripts/step-N-<agent>.md` and commit that file to the branch before merging. This creates a permanent, reviewable record.
 
 ---
 
-## Cost Management & Estimation
+### 5.5 Critic Review (Governance Mode)
 
-Even though you are using VS Code Chat (which may be "unlimited" in your subscription tier), the underlying model usage still matters. The original tool tracks **premium requests** because the CLI `copilot -p` consumes them. In a chat environment, you can still apply the **planning discipline** to avoid wasting tokens.
+The Critic Agent is applied after the verification checklist passes and before the branch is merged.
 
-- **Pre‑execution Estimator**: Predicts number of agent invocations based on plan steps and historical failure rates.
-- **Budgeting**: Set a hard limit on number of chat rounds per session.
-- **Cost Attribution**: Keep a log of which agent consumed how many interactions.
+**Process**:
+
+1. Invoke Copilot Chat with the Critic Agent persona and provide: the step's done-definition, the verification evidence, and any relevant code diff.
+2. The Critic scores the step on the 100-point rubric and returns a score, itemised deductions, and a recommendation.
+3. If the score is 70 or above and there are no hard blockers: proceed with merge.
+4. If the score is below 70 or a hard blocker is flagged: halt, document the finding, and either repair or escalate for human decision.
+
+**Governance escalation threshold**: Always invoke the Critic for steps involving authentication, authorisation, data persistence, or third-party API keys. For low-risk steps (documentation, minor styling), Critic review is recommended but not mandatory.
 
 ---
 
-## Configuration & Customization Files
+### 5.6 Self-Repair Loop
 
-The original orchestrator uses YAML files. For a manual chat‑based implementation, you can maintain a similar structure as **prompt templates** in your project.
+```
+Step fails verification or Critic scores < 70
+        │
+        ▼
+Diagnose failure category
+(build-error / test-failure / missing-artifact / lint-error / merge-conflict)
+        │
+        ▼
+Select repair strategy from Section 4.3
+        │
+        ▼
+Re-invoke the step-executing agent with a corrective prompt
+(on the same branch; prefix commit with "repair:")
+        │
+        ▼
+Re-run full verification checklist
+        │
+        ├─ Pass → Critic review → Merge
+        │
+        └─ Fail → Attempt count < 3? → Loop back
+                                │
+                                └─ Attempt count = 3 → Mark BLOCKED
+                                                        Halt session
+                                                        Human intervention required
+```
+
+---
+
+### 5.7 Merging & Post-Merge Quality Gates
+
+**Merge order**: Steps are merged in dependency order — a step's branch is only merged after all branches it depends on have been merged and their quality confirmed.
+
+**Merge command**:
+```bash
+git checkout main
+git merge --no-ff swarm/<session>/step-N-<agent> -m "merge: step N (<agent>) — <brief description>"
+```
+
+**Post-merge**: After all step branches are merged, the eight quality gates (Section 6) are run against the final state of `main`.
+
+---
+
+## 6. The Eight Post-Merge Quality Gates
+
+These gates are fully **deterministic** — they use regex, AST analysis, file scanning, and static thresholds. No AI or LLM is involved, ensuring that results are reproducible and not subject to hallucination.
+
+Gates are implemented as shell scripts or simple Node/Python scripts stored in `.swarm/gates/` and run as a batch after all merges complete.
+
+| # | Gate | What It Checks | Failure Condition |
+| :--- | :--- | :--- | :--- |
+| **1** | Scaffold Leftovers | Scans all source files for `TODO`, `FIXME`, `PLACEHOLDER`, `Lorem ipsum`, `[INSERT`, and similar markers. | Any occurrence found in non-test files. |
+| **2** | Duplicate Code Blocks | Detects repeated code blocks longer than 5 lines using a token-hash comparison. | Duplication ratio exceeds the configured threshold (default: any block appearing 3+ times). |
+| **3** | Hardcoded Configuration | Flags magic strings, hardcoded URLs, IP addresses, API keys, or passwords in non-example source files. | Any hardcoded value found in a location that should use environment variables or config. |
+| **4** | README Drift | Parses setup commands and feature claims in `README.md` and cross-references them against actual scripts in `package.json` / `Makefile` and directories that exist. | A README command references a script that doesn't exist, or a described feature has no corresponding code directory. |
+| **5** | Test Isolation | Detects shared mutable state between test cases (e.g. global variables mutated in one test and read in another, missing `beforeEach` resets). | Any test file where test execution order can affect outcomes. |
+| **6** | Test Coverage | Reads the coverage report generated by the test runner and validates it against the configured minimum. | Coverage falls below threshold (default: 80% line coverage). |
+| **7** | Accessibility Basics | Parses rendered HTML templates and JSX for missing `alt` attributes on `<img>` elements, missing `aria-label` on interactive elements without text, and form inputs without associated labels. | Any required attribute absent from a non-decorative element. |
+| **8** | Runtime Smoke Test | Starts the application (or the relevant service) and sends a minimal health-check request (e.g. `GET /health`). | Process exits with a non-zero code, or the health-check request returns a 5xx response. |
+
+**Gate output**: Each gate produces a pass/fail result and, on failure, a list of the specific files and line numbers that caused the failure. All results are written to `.swarm/gate-results/session-<id>.json`.
+
+---
+
+## 7. Cost & Quota Management
+
+As of 2025, GitHub Copilot pricing distinguishes between:
+
+- **Base model requests** (unlimited on paid plans, using GPT-4o by default): Standard Copilot Chat and code completions.
+- **Premium requests** (quota-limited): Agent mode turns, and Chat turns using premium models (Claude Sonnet, GPT-4.1, o3, etc.).
+
+Agent mode can consume multiple premium requests per prompt because it makes several LLM calls internally as it plans and executes tool calls.
+
+### Planning Principles
+
+| Principle | Guidance |
+| :--- | :--- |
+| **Reserve Agent Mode for complex, multi-file steps** | For well-scoped, single-file tasks, use Copilot Chat in Edit mode — it is more token-efficient and gives you more direct control. |
+| **Set a step budget per session** | Before starting, estimate the number of agent invocations (steps × average repair rate). A rule of thumb: budget 1.5× the number of steps to account for one repair attempt per step on average. |
+| **Track quota consumption** | Note in `SESSIONS.md` which steps consumed premium requests and how many turns each agent took. This informs future session planning. |
+| **Batch small steps** | If two consecutive steps belong to the same agent and have no parallel dependencies, combine them into a single invocation to reduce per-turn overhead. |
+| **Prefer Ask mode for the PM and Critic agents** | These agents read and reason about existing work — they don't need to edit files. Use Chat Ask mode (not Agent mode) for governance agents to conserve quota. |
+
+---
+
+## 8. Configuration & Customization Files
+
+The following file structure stores all orchestrator configuration within the project repository.
+
+```
 .swarm/
-├── agents.yaml # Your custom agent definitions
-├── gates.yaml # Quality gate thresholds
-└── plans/ # Saved execution plans
+├── agents/
+│   ├── frontend-expert.prompt.md       # Agent persona as a VS Code prompt file
+│   ├── backend-master.prompt.md
+│   ├── devops-pro.prompt.md
+│   ├── security-auditor.prompt.md
+│   ├── tester-elite.prompt.md
+│   └── integrator-finalizer.prompt.md
+├── gates/
+│   ├── gate-1-scaffold.sh
+│   ├── gate-2-duplicates.sh
+│   ├── gate-3-hardcoded.sh
+│   ├── gate-4-readme-drift.sh
+│   ├── gate-5-test-isolation.sh
+│   ├── gate-6-coverage.sh
+│   ├── gate-7-accessibility.sh
+│   └── gate-8-smoke-test.sh
+├── gate-results/
+│   └── .gitkeep
+├── config.yaml                         # Thresholds and session settings
+└── plans/
+    └── .gitkeep                        # Saved execution plans go here
 
-text
+.github/
+└── copilot-instructions.md             # Persistent custom instructions for all Copilot Chat sessions
 
-Example `agents.yaml` snippet:
+transcripts/
+└── .gitkeep                            # Step transcript files committed after each agent turn
+
+SESSIONS.md                             # Session log maintained by the developer
+```
+
+### `config.yaml` Structure
+
 ```yaml
-agents:
-  - name: FrontendExpert
-    purpose: Implement UI components...
-    scope: ...
-    boundaries: ...
-    done_definition: ...
-Implementation for VS Code Copilot Chat (No CLI)
+swarm:
+  coverage_threshold: 80          # Minimum line coverage percentage (Gate 6)
+  duplicate_block_min_lines: 5    # Minimum lines to flag as duplicate (Gate 2)
+  duplicate_occurrence_limit: 3   # Flag blocks appearing this many times or more
+  critic_pass_threshold: 70       # Minimum Critic score to allow merge
+  max_repair_attempts: 3          # Maximum repair loops per step
+  session_step_budget_multiplier: 1.5  # Multiply planned steps by this for quota estimate
+```
 
-9.1. Challenges & Workarounds
+### `.github/copilot-instructions.md`
 
-Challenge	Workaround
-No automatic parallel subprocesses	Manually open multiple chat sessions or use @workspace mentions in a single session with clear turn‑taking.
-No built‑in branch isolation	You manually create and switch branches before each agent invocation.
-No transcript capture for evidence	Copy the chat response into a transcripts/step-N.md file and commit it.
-No automated verification	Perform the verification checks manually (or via scripts) using the evidence files.
-9.2. Manual Agent Invocation Pattern
+This file is read automatically by VS Code Copilot at the start of every chat session in the workspace. Use it to establish baseline behaviour that applies to all agents — for example:
 
-For each step, use a structured prompt that mimics the original CLI invocation:
+```markdown
+# Project Copilot Instructions
 
-text
-@workspace Act as the **BackendMaster** agent.
+- All code must be TypeScript strict mode with no `any` types.
+- Use the `apiClient` from `src/lib/api.ts` for all HTTP calls. Do not use `fetch` directly.
+- Tailwind CSS only — no inline styles.
+- Every function touching user data must include input validation.
+- Before making any change, state which files you will modify and why.
+```
 
-**Task**: Add user preference API endpoint for theme.
-**Scope**: Create a new route `/api/user/theme` that accepts GET and PUT.
-**Boundaries**: Do not modify frontend code.
-**Done Definition**: 
-  - Endpoint returns 200 with `{ theme: "light" | "dark" }`.
-  - Input validation rejects invalid themes.
-  - Unit test passes.
+### Agent Prompt Files (`.prompt.md`)
 
-After completing, provide:
-1. The commit SHA (you must commit your changes).
-2. A summary of files changed.
-3. Any test output.
-9.3. Simulating Isolation & Verification
+Each agent is defined as a VS Code prompt file. These are reusable and can be invoked from the Copilot Chat prompt input. Example structure for `frontend-expert.prompt.md`:
 
-Before the prompt: git checkout -b swarm/step-1-backendmaster
-Run the prompt in Copilot Chat.
-After the prompt: Manually verify:
+```markdown
+---
+mode: agent
+---
 
-git log -1 shows a commit.
-Tests pass.
-Save evidence: Copy the chat response to transcripts/step-1.md and commit it.
-Merge back: git checkout main && git merge --no-ff swarm/step-1-backendmaster
-Repeat for each step.
+You are the **FrontendExpert** agent.
 
-9.4. Using Skills to Enhance Agents
+**Purpose**: Implement UI components, styles, and frontend logic.
+**Scope**: Components, hooks, state management, API integration, styling, accessibility.
+**Boundaries**: Do NOT modify backend files, database schemas, or CI/CD configuration.
 
-You can create Agent Skills to pre‑load specialized knowledge. A Skill is a folder with a SKILL.md file. For example:
+**Done Definition**:
+- All components render without errors
+- API calls use the confirmed endpoint field names from BackendMaster output
+- Zero TypeScript errors, zero ESLint errors
+- Basic responsive behaviour verified
 
-text
-skills/frontend-expert/
-└── SKILL.md
-Inside SKILL.md:
+**Refusal Rule**: If backend API field names are not documented or confirmed, STOP and ask before proceeding. Do not infer or guess field names.
 
-markdown
-# Frontend Expert Skill
+**Commit requirement**: You must commit all changes with a descriptive message before declaring the step complete.
+```
 
-You are an expert in React and TypeScript. Always:
-- Use functional components and hooks.
-- Prefer Tailwind CSS for styling.
-- Ensure all API calls use the `apiClient` from `@/lib/api`.
-- Do **not** use inline styles.
-Then reference the skill in your chat prompt:
-@workspace Use the FrontendExpert skill and implement the dark mode toggle.
+---
 
-9.5. Practical Chat Workflow Example
+## 9. VS Code Chat Execution Model
 
-Goal: "Add a dark mode toggle to the settings page."
+### 9.1 Chat Mode vs. Agent Mode – Choosing the Right Surface
 
-Plan (ask Copilot to generate):
+VS Code Copilot Chat offers several interaction modes. Choosing the right one per step affects both output quality and quota consumption.
 
-text
-You: "Act as PMAgent. Break down this goal into steps with assigned agents."
-Copilot: [Returns plan with 4 steps]
-Step 1 – Backend:
+| Mode | Best Used For | Quota Cost |
+| :--- | :--- | :--- |
+| **Ask** | PM Agent, Critic Agent, plan generation, clarifying questions | Low (base requests) |
+| **Edit** | Well-scoped, single-file or small multi-file changes with a known target set | Low to medium |
+| **Agent** | Complex multi-file steps where Copilot needs to explore the codebase, run terminal commands, and self-correct | Higher (premium requests per turn) |
 
-Create branch swarm/step-1
-Prompt with BackendMaster template.
-Verify, commit evidence, merge to main.
-Step 2 – Frontend:
+For most step-executing agents (BackendMaster, FrontendExpert, TesterElite), **Agent mode is the appropriate choice** because these steps typically involve multiple files and require running tests or build commands to confirm correctness.
 
-Create branch swarm/step-2
-Prompt with FrontendExpert template.
-Verify, commit evidence, merge.
-Step 3 – Tests:
+---
 
-Parallel to Step 2 if dependencies allow.
-Step 4 – Integration:
+### 9.2 Structured Agent Invocation Pattern
 
-Final verification and quality gate checks.
-Tip: Keep a SESSIONS.md file to track which steps are done, their commit SHAs, and where transcripts are stored.
-CLI Command Reference (Informational)
+Before invoking an agent, switch to the correct git branch:
 
-The original CLI commands (for context only):
+```bash
+git checkout -b swarm/<session-id>/step-N-<agent>
+```
 
-Command	Purpose
-swarm bootstrap ./project "Goal"	Start a new orchestration run.
-swarm demo demo-fast	Run a two‑agent parallel demo.
-swarm plan "Build a CLI tool" --plan-cache	Generate and cache a plan.
-swarm gates ./repo --sarif results.sarif	Run quality gates and produce SARIF report.
-swarm swarm plan.json --cost-estimate-only	Preview cost before execution.
-Limitations & Caveats
+Then open Copilot Chat in Agent mode and issue a structured prompt. For reusable prompts, reference the agent's `.prompt.md` file using the VS Code prompt file picker, then append the step-specific task.
 
-Not an Official Product: Swarm Orchestrator is a community project. The adaptation described here is a manual methodology, not an automated tool.
-Manual Overhead: You must perform branch management and verification manually.
-No Built‑In Parallelism: True parallel execution requires opening multiple VS Code windows or using multiple chat sessions.
-Evidence Integrity: You are responsible for ensuring the evidence (transcripts, commits) is accurate and untampered.
-API Changes: Copilot Chat's behavior may change, requiring prompt adjustments.
-Appendix: Example Agent Prompt Template
+**Structured invocation format**:
 
-Use this template for each step:
+```
+[Load agent prompt file: .swarm/agents/backend-master.prompt.md]
 
-text
-@workspace You are the **[AGENT_NAME]** agent.
+**Session**: session-20250422
+**Step**: 1
+**Task**: Add GET /api/user/preferences and PUT /api/user/preferences endpoints.
+         Response shape: { theme: "light" | "dark" }
+**Context**: This is a Node.js/Express application. The User model is in src/models/User.ts.
+**Dependencies resolved**: None (first step)
+**Confirmation required before starting**: Confirm which files you plan to modify.
+```
 
-**Context**: We are working on [PROJECT_GOAL].
-**Your Specific Task**: [TASK_DESCRIPTION]
-**Scope (what you may change)**: [SCOPE]
-**Boundaries (what you MUST NOT change)**: [BOUNDARIES]
-**Done Definition**: 
-  - [CRITERION_1]
-  - [CRITERION_2]
-  - [CRITERION_3]
+---
 
-**Required Output**:
-  1. Commit your changes with a descriptive message.
-  2. Provide the commit SHA.
-  3. Provide a summary of files changed.
-  4. If tests were run, include the output.
+### 9.3 Branch Isolation & Evidence Collection
 
-**Refusal Rule**: If any information is ambiguous, STOP and ask for clarification. Do NOT guess.
+**After the agent completes a step**, run the verification checklist:
+
+```bash
+# 1. Confirm a commit was made
+git log -1 --oneline
+
+# 2. Confirm only in-scope files were changed
+git diff main --stat
+
+# 3. Run tests
+npm test
+
+# 4. Run linter
+npx eslint .
+
+# 5. Check coverage report (if applicable)
+npx jest --coverage
+```
+
+**Save the evidence**:
+
+```bash
+# Copy terminal output into the transcript file
+# Then commit the transcript
+git add transcripts/step-1-backendmaster.md
+git commit -m "evidence: step 1 verification transcript"
+```
+
+---
+
+### 9.4 Custom Instructions & Prompt Files
+
+VS Code Copilot supports two native mechanisms for persistent instructions:
+
+**1. `.github/copilot-instructions.md`**
+Applied automatically to every chat session in the workspace. Use for project-wide rules that every agent must follow.
+
+**2. Prompt files (`.prompt.md` in `.swarm/agents/`)**
+Reusable prompt templates selectable from the Copilot Chat interface. Use for agent-specific persona definitions. These are the correct VS Code-native equivalent of the "Skills" concept — they are not auto-loaded but are explicitly referenced per session.
+
+> **Note**: There is no native Copilot "Skills" folder system that auto-injects context by folder name. The `.prompt.md` approach is the supported VS Code mechanism. Any workflow claiming otherwise requires manual copy-paste.
+
+---
+
+### 9.5 Practical Session Walkthrough
+
+**Goal**: "Add a dark mode toggle to the settings page."
+
+**Pre-session checklist**:
+- [ ] Create `SESSIONS.md` entry for this session with today's date
+- [ ] Confirm `.github/copilot-instructions.md` is up to date
+- [ ] Verify agent prompt files exist in `.swarm/agents/`
+- [ ] Confirm `main` is clean (`git status`)
+
+**Step 1 – BackendMaster**:
+1. `git checkout -b swarm/20250422/step-1-backendmaster`
+2. Open Copilot Chat → Agent mode → load `backend-master.prompt.md` → append step task
+3. Agent completes work
+4. Run verification checklist; save evidence to `transcripts/step-1-backendmaster.md`
+5. Invoke Critic Agent (Chat Ask mode) with the done-definition and evidence
+6. Score ≥ 70 → `git checkout main && git merge --no-ff swarm/20250422/step-1-backendmaster`
+7. Update `SESSIONS.md`: Step 1 — PASSED — commit `abc1234`
+
+**Step 2 – FrontendExpert** (depends on Step 1):
+1. Confirm Step 1's API field names from `transcripts/step-1-backendmaster.md`
+2. `git checkout -b swarm/20250422/step-2-frontendexpert`
+3. Invoke FrontendExpert with step task + confirmed field names as context
+4. Verification → Critic → Merge → Update session log
+
+**Step 3 – TesterElite** (depends on Steps 1 and 2):
+1. Both prior branches merged to `main` ✓
+2. `git checkout -b swarm/20250422/step-3-testerelite`
+3. Invoke TesterElite
+4. Verification → Critic → Merge → Update session log
+
+**Step 4 – IntegratorFinalizer**:
+1. `git checkout -b swarm/20250422/step-4-integratorfinalizer`
+2. Invoke IntegratorFinalizer
+3. Verification → Critic → Merge → Update session log
+
+**Post-session**:
+1. Run all 8 quality gates: `bash .swarm/gates/run-all.sh`
+2. Review gate results in `.swarm/gate-results/`
+3. Address any gate failures before considering the session complete
+
+---
+
+## 10. Limitations & Honest Caveats
+
+| Limitation | Reality |
+| :--- | :--- |
+| **No automation** | Everything described in this document — branch creation, agent invocation, verification, repair, and merging — is performed manually by the developer. There is no tool that automates this workflow. |
+| **Manual parallelism only** | True parallel execution requires opening multiple VS Code windows on separate branches. There is no background scheduling or process orchestration. |
+| **Agent mode quota consumption** | Agent mode consumes premium requests that are quota-limited on all plans. Complex sessions with many steps and repair loops can exhaust monthly quotas. Plan accordingly. |
+| **Evidence integrity is your responsibility** | The transcripts and git log are only as reliable as the discipline applied. If you accept an agent's claims without running the verification checklist, the evidence trail is meaningless. |
+| **Copilot doesn't always commit** | Even when instructed to commit, Agent mode does not always produce a git commit. Always verify with `git log -1` and prompt the agent to commit if it hasn't. |
+| **AI can still hallucinate** | The verification layer exists precisely because AI outputs are unreliable. A passing verification checklist reduces but does not eliminate the risk of subtle bugs. Human code review remains essential. |
+| **Not an official GitHub product** | This is a community methodology. It is not endorsed by, affiliated with, or supported by GitHub or Microsoft. Copilot's behaviour may change in ways that require prompt adjustments. |
+
+---
+
+## Appendix A – Agent Prompt Template
+
+Use this template when invoking any step-executing agent. Replace all bracketed values before sending.
+
+```
+[Load agent prompt file: .swarm/agents/<agent-name>.prompt.md]
+
+**Session ID**: <session-id>
+**Step**: <step-number>
+
+**Task**: <specific description of what this agent must accomplish>
+
+**Context**:
+- Project type: <e.g. Node.js/React monorepo>
+- Relevant files: <list key files the agent should be aware of>
+- Dependencies resolved: <what prior steps have produced that this step builds on>
+
+**Confirmed inputs from prior steps**: <e.g. API field names, schema definitions>
+
+**Before you begin**: State which files you plan to modify and why.
+
+**Required outputs**:
+1. Complete all task criteria
+2. Commit all changes with a descriptive message
+3. Confirm the commit SHA
+4. List all files changed
+5. If tests were run, provide the output
+
+**Refusal rule**: If anything is ambiguous, stop and ask. Do not guess.
+```
+
+---
+
+## Appendix B – Session Tracking Template
+
+Maintain a `SESSIONS.md` file in the project root. Update it after each step.
+
+```markdown
+# Swarm Session Log
+
+## Session: <session-id> — <date>
+**Goal**: <high-level goal>
+**Branch prefix**: swarm/<session-id>/
+
+---
+
+### Step 1 — BackendMaster
+- **Status**: PASSED
+- **Branch**: swarm/<session-id>/step-1-backendmaster
+- **Commit SHA**: <sha>
+- **Transcript**: transcripts/step-1-backendmaster.md
+- **Critic Score**: <score>/100
+- **Notes**: <any notable issues or decisions>
+
+---
+
+### Step 2 — FrontendExpert
+- **Status**: PASSED (1 repair attempt)
+- **Branch**: swarm/<session-id>/step-2-frontendexpert
+- **Commit SHA**: <sha>
+- **Repair commit SHA**: <sha> (repair: fixed missing ThemeContext import)
+- **Transcript**: transcripts/step-2-frontendexpert.md
+- **Critic Score**: <score>/100
+- **Notes**:
+
+---
+
+### Quality Gates
+- **Run date**: <date>
+- **Results file**: .swarm/gate-results/<session-id>.json
+- **Gate 1 – Scaffold Leftovers**: PASS
+- **Gate 2 – Duplicate Blocks**: PASS
+- **Gate 3 – Hardcoded Config**: PASS
+- **Gate 4 – README Drift**: FAIL — README references `npm run dev:full`, script doesn't exist
+- **Gate 5 – Test Isolation**: PASS
+- **Gate 6 – Test Coverage**: PASS (83%)
+- **Gate 7 – Accessibility**: PASS
+- **Gate 8 – Runtime Smoke Test**: PASS
+- **Action taken**: Updated README to reference correct script `npm run dev`
+```
