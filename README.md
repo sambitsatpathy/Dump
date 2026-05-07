@@ -1,3 +1,29 @@
+const morkBorgThinkingPhrases = [
+  "Consulting the two-headed basilisks... 🐍🐍",
+  "Waiting for the seventh misery to strike... ☄️",
+  "Decoding the prophecies of SHE... 📜👁️",
+  "The world is dying, but I am thinking... 🥀🌔",
+  "Watching the blackened sun descend... 🌑🌞",
+  "Counting the days until the end... ⏳💀",
+  "Scrawling in the margins of a doomed grimoire... 🖋️📖",
+  "Wandering the fields of Graven-Tosk... 🪦🕯️",
+  "Sharpening a rusted blade... 🗡️🩸",
+  "Gathering silver from cracked fingernails... 🪙💅",
+  "Sifting through the ashes of Galgenbeck... 🏛️🔥",
+  "Listening to the screams from the Shadow King’s palace... 🏰🗣️",
+  "Invoking unclean powers... 🕷️✨",
+  "Deciphering the forbidden scrolls... 📜🔓",
+  "Communing with the Nameless Scriptures... 📖👹",
+  "The ink is blood; the paper is skin... 💉📜",
+  "Staring into the void of the Valley of Unfortunate Undead... 🕳️🧟",
+  "Consulting a fanged deserter... 🦷⚔️",
+  "Waking an esoteric hermit... 🏚️🧟‍♂️",
+  "Calculating the miserable fate of a gutterborn scum... 📉🐀",
+  "Mixing toxins with a herbmaster... 🧪🍄"
+];
+
+
+
 # 👨‍🍳 Cook — Pluggable Knowledge Base for GitHub Copilot
 
 > Ask Copilot questions grounded in **any** knowledge base — Salt Design System, local docs folders, npm packages, or remote URLs — using a single `@cook` chat participant.
