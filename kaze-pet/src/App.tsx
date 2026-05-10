@@ -27,13 +27,16 @@ export default function App({ workspacePath, petName }: AppProps) {
     watcher.start();
 
     // Clean exit on ctrl-c
-    process.on('SIGINT', () => {
+    const onSigInt = () => {
+      watcher.stop();
       exit();
       process.exit(0);
-    });
+    };
+    process.on('SIGINT', onSigInt);
 
     return () => {
-      watcher.removeAllListeners();
+      process.off('SIGINT', onSigInt);
+      watcher.stop();
     };
   }, [workspacePath, exit]);
 
