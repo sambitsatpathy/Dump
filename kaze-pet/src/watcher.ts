@@ -18,6 +18,7 @@ export class WorkspaceWatcher extends EventEmitter {
   private idleTimer:  ReturnType<typeof setTimeout> | null = null;
   private sleepTimer: ReturnType<typeof setTimeout> | null = null;
   private transientTimer: ReturnType<typeof setTimeout> | null = null;
+  private watchers: chokidar.FSWatcher[] = [];
 
   constructor(private readonly workspacePath: string) {
     super();
@@ -36,8 +37,7 @@ export class WorkspaceWatcher extends EventEmitter {
       ignored: [
         /(^|[/\\])\../,          // dot files
         /node_modules/,
-        /\.git[/\\]objects/,
-        /\.git[/\\]refs/,
+        /\.git/,
         /dist[/\\]/,
         /build[/\\]/,
         /\.next[/\\]/,
@@ -46,8 +46,11 @@ export class WorkspaceWatcher extends EventEmitter {
       ],
       ignoreInitial: true,
       depth: 10,
-      awaitWriteFinish: { stabilityThreshold: 80, pollInterval: 40 },
+      usePolling: true,
+      interval: 100,
+      awaitWriteFinish: false,
     });
+    this.watchers.push(srcWatcher);
 
     srcWatcher.on('change', (filePath) => {
       this.onFileActivity(`changed: ${path.relative(resolved, filePath)}`);
@@ -60,12 +63,14 @@ export class WorkspaceWatcher extends EventEmitter {
     });
 
     // ── Git commit watcher ────────────────────────────────
-    const commitMsgPath = path.join(resolved, '.git', 'COMMIT_EDITMSG');
+    const gitIndexPath = path.join(resolved, '.git', 'index');
     if (fs.existsSync(path.join(resolved, '.git'))) {
-      const gitWatcher = chokidar.watch(commitMsgPath, {
+      const gitWatcher = chokidar.watch(gitIndexPath, {
         ignoreInitial: true,
-        usePolling: false,
+        usePolling: true,
+        interval: 100,
       });
+      this.watchers.push(gitWatcher);
       gitWatcher.on('change', () => this.onCommit());
     }
 
@@ -75,15 +80,17 @@ export class WorkspaceWatcher extends EventEmitter {
       path.join(resolved, 'build'),
       path.join(resolved, '.next'),
       path.join(resolved, 'out'),
-    ].filter(p => !fs.existsSync(p)); // only watch dirs that don't exist yet
+    ];
 
-    if (buildPaths.length > 0) {
-      const buildWatcher = chokidar.watch(buildPaths, {
-        ignoreInitial: true,
-        depth: 0,
-      });
-      buildWatcher.on('addDir', () => this.onBuild());
-    }
+    const buildWatcher = chokidar.watch(buildPaths, {
+      ignoreInitial: true,
+      depth: 1,
+      usePolling: true,
+      interval: 100,
+    });
+    this.watchers.push(buildWatcher);
+    buildWatcher.on('addDir', () => this.onBuild());
+    buildWatcher.on('add', () => this.onBuild());
 
     this.startSleepChain();
   }
@@ -160,5 +167,14 @@ export class WorkspaceWatcher extends EventEmitter {
   forceState(next: PetState): void {
     this.cancelTransient();
     this.setState(next, 'external');
+  }
+
+  stop(): void {
+    this.cancelTransient();
+    if (this.idleTimer) clearTimeout(this.idleTimer);
+    if (this.sleepTimer) clearTimeout(this.sleepTimer);
+    this.watchers.forEach(w => w.close());
+    this.watchers = [];
+    this.removeAllListeners();
   }
 }

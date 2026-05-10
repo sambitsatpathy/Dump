@@ -229,22 +229,22 @@ const ERROR_A: SpriteFrame = [
 ];
 
 const ERROR_B: SpriteFrame = [    // shake: shift 1px right
-  '..........',   //  0
-  '..HB..BH..',   //  1  shifted down for shake
-  '..BB..BB..',   //  2
-  '.WBBBBBBW.',   //  3
-  '.rBRBBBRBr',   //  4
-  '.rBEEBBEEr',   //  5
-  '.rBEpBBpEr',   //  6
-  '.rBEEBBEEr',   //  7
-  '.rBRBBBRBr',   //  8
-  '..RBBBBR..',   //  9
-  '..BRHBRb..',   // 10
-  '..bRBBRb..',   // 11
-  '...BBBBB..',   // 12
-  '...rRRRr..',   // 13
-  '....RRr...',   // 14
-  '.....Rr...',   // 15
+  '...HB..BH.',   //  0
+  '...BB..BB.',   //  1
+  '..WBBBBBBW',   //  2
+  '.RrBRBBBRB',   //  3
+  '.RrBEEBBEE',   //  4
+  '.RrBEpBBpE',   //  5
+  '.RrBEEBBEE',   //  6
+  '.RrBRBBBRB',   //  7
+  '...RBBBBR.',   //  8
+  '...BRHBRb.',   //  9
+  '...bRBBRb.',   // 10
+  '....BBBBB.',   // 11
+  '....rRRRr.',   // 12
+  '.....RRr..',   // 13
+  '......Rr..',   // 14
+  '..........',   // 15
   '..........',   // 16
   '..........',   // 17
   '..........',   // 18
